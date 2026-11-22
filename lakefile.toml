@@ -1,0 +1,10 @@
+name = "LeanBasics"
+version = "0.1.0"
+defaultTargets = ["LeanBasics"]
+
+# Each lesson is a standalone module (they are self-contained so that every
+# cell can be opened in the web playground), so build them all independently.
+[[lean_lib]]
+name = "LeanBasics"
+roots = []
+globs = ["LeanBasics.+"]
