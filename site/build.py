@@ -280,11 +280,32 @@ ICON_PLAY = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 2.5v11l9-5.
 ICON_COPY = ('<svg viewBox="0 0 16 16" aria-hidden="true"><rect x="5" y="5" width="9" height="9" rx="1.5" '
              'fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M3 11V3.5A1.5 1.5 0 0 1 4.5 2H11" '
              'fill="none" stroke="currentColor" stroke-width="1.4"/></svg>')
+ICON_EXTERNAL = ('<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M9 2.5h4.5V7M13.5 2.5 7.5 8.5M12 9.5V13a.5.5 0 0 1-.5.5h-8'
+                 'a.5.5 0 0 1-.5-.5V4.5A.5.5 0 0 1 3.5 4H7" fill="none" stroke="currentColor" stroke-width="1.4" '
+                 'stroke-linecap="round" stroke-linejoin="round"/></svg>')
+
+
+def compact_prefix(code: str) -> str:
+    """Earlier cells, minus what is only for show (#eval/#check, comment-only lines),
+    so the cell you clicked is close to the top of the playground editor."""
+    keep = [l for l in code.split("\n")
+            if not l.startswith(("#eval", "#check")) and not l.strip().startswith("--")]
+    return re.sub(r"\n{3,}", "\n\n", "\n".join(keep)).strip()
+
+
+def cell_program(prefix: str, text: str, label: str) -> str:
+    prefix = compact_prefix(prefix)
+    if not prefix:
+        return text.strip() + "\n"
+    return (f"-- Earlier cells (already loaded):\n\n{prefix}\n\n"
+            f"-- ▼▼▼ {label} ▼▼▼\n\n{text.strip()}\n")
 
 
 def render_code_cell(c: Cell, prefix: str, n: int) -> str:
-    full = (prefix + "\n\n" + c.text).strip() + "\n"
     label = {"normal": f"[{n}]", "exercise": "exercise", "solution": "solution"}[c.role]
+    title = {"normal": f"Cell [{n}]", "exercise": "Exercise", "solution": "Solution"}[c.role]
+    full = cell_program(prefix, c.text, title)
+    url = html.escape(playground_url(full))
     outputs = ""
     if c.outputs:
         rows = "".join(
@@ -297,8 +318,10 @@ def render_code_cell(c: Cell, prefix: str, n: int) -> str:
         f'<div class="cell-bar"><span class="cell-label">{label}</span>'
         f'<span class="cell-actions">'
         f'<button class="btn copy" type="button" data-code="{html.escape(c.text)}">{ICON_COPY}<span>Copy</span></button>'
-        f'<a class="btn run" href="{html.escape(playground_url(full))}" target="_blank" rel="noopener" '
-        f'title="Open in the Lean playground with all earlier cells loaded">{ICON_PLAY}<span>Run</span></a>'
+        f'<a class="btn newtab" href="{url}" target="_blank" rel="noopener" '
+        f'title="Open in a new tab" aria-label="Open in a new tab">{ICON_EXTERNAL}</a>'
+        f'<button class="btn run" type="button" data-url="{url}" aria-expanded="false" '
+        f'title="Run live Lean right here, with all earlier cells loaded">{ICON_PLAY}<span>Run</span></button>'
         f"</span></div>"
         f"<pre><code>{highlight_lean(c.text)}</code></pre>{outputs}</div>"
     )
@@ -371,7 +394,36 @@ def page(title: str, body: str, lessons, idx) -> str:
 <footer>Built from plain <code>.lean</code> files. Code runs in the
 <a href="https://live.lean-lang.org" target="_blank" rel="noopener">official Lean playground</a>.</footer>
 <script>
+function closeRepl(repl) {{
+  const run = repl.previousElementSibling && repl.previousElementSibling.querySelector('button.run');
+  repl.remove();
+  if (run) {{ run.setAttribute('aria-expanded', 'false'); run.querySelector('span').textContent = 'Run'; }}
+}}
 document.addEventListener('click', async (e) => {{
+  const run = e.target.closest('button.run');
+  if (run) {{
+    const cell = run.closest('.code-cell');
+    const open = cell.nextElementSibling;
+    if (open && open.classList.contains('repl')) {{ closeRepl(open); return; }}
+    const repl = document.createElement('div');
+    repl.className = 'repl';
+    repl.innerHTML =
+      '<div class="repl-bar"><span class="repl-title"><span class="dot"></span>Live Lean</span>' +
+      '<span class="repl-hint">Edit the code · click inside a proof to see its goal</span>' +
+      '<button class="btn repl-close" type="button">Close</button></div>' +
+      '<div class="repl-body"><div class="repl-loading">Starting Lean…</div>' +
+      '<iframe title="Lean playground" allow="clipboard-read; clipboard-write"></iframe></div>';
+    const frame = repl.querySelector('iframe');
+    frame.addEventListener('load', () => repl.classList.add('loaded'));
+    frame.src = run.dataset.url;
+    cell.after(repl);
+    run.setAttribute('aria-expanded', 'true');
+    run.querySelector('span').textContent = 'Close';
+    repl.scrollIntoView({{ behavior: 'smooth', block: 'nearest' }});
+    return;
+  }}
+  const close = e.target.closest('button.repl-close');
+  if (close) {{ closeRepl(close.closest('.repl')); return; }}
   const b = e.target.closest('button.copy');
   if (!b) return;
   try {{ await navigator.clipboard.writeText(b.dataset.code); }} catch (_) {{}}
@@ -406,8 +458,9 @@ theorem gauss (n : Nat) : 2 * sumTo n = n * (n + 1) := by
   | zero => rfl
   | succ k ih => rw [sumTo]; grind''')}</code></pre>
   </div>
-  <p>Each lesson is a notebook. Read the text, then press <strong>Run</strong> on any cell to open it in
-  the browser-based Lean playground, with all earlier cells already loaded. You don't need to install anything.</p>
+  <p>Each lesson is a notebook. Read the text, then press <strong>Run</strong> on any cell: a live Lean
+  editor opens right there, with all earlier cells already loaded. Change the code, break a proof, fix it.
+  You don't need to install anything.</p>
 </section>
 <section class="lesson-list">{cards}</section>
 <section class="cell md-cell">

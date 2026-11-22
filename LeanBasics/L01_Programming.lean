@@ -4,10 +4,10 @@
 Before Lean is a proof assistant, it is a **typed functional programming language**.
 If you know Python, most of this lesson is just new syntax for old ideas.
 
-Each grey box is a code cell. Click **▶ Run** on a cell to open it in the official
-Lean playground, which has the code from every cell before it already loaded,
-much like a Jupyter kernel. In the playground, put your cursor on a line to see
-its output in the right-hand **Infoview** panel.
+Each grey box is a code cell. Click **▶ Run** on a cell and a live Lean editor opens
+right below it, with the code from every earlier cell already loaded, much like a
+Jupyter kernel. Edit anything you like. Put your cursor on a line to see its output
+in the right-hand **Infoview** panel. (The ↗ button opens the same thing in a new tab.)
 
 ## Values, types, `#eval` and `#check`
 

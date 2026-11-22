@@ -154,6 +154,42 @@ pre code { font-size: inherit; }
 .out-src { color: var(--muted); overflow-wrap: anywhere; }
 .out-val { color: var(--ink); white-space: pre-wrap; overflow-wrap: anywhere; }
 
+.btn.newtab { padding: 4px 7px; color: var(--muted); }
+.btn.run[aria-expanded="true"] { background: var(--surface); color: var(--accent); }
+
+/* inline live Lean (the official playground, embedded) */
+.repl {
+  position: relative;
+  width: min(1280px, calc(100vw - 32px));
+  left: 50%;
+  transform: translateX(-50%);
+  margin: -4px 0 22px;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--surface);
+  box-shadow: 0 10px 30px -18px rgba(0, 0, 0, 0.35);
+}
+.repl-bar {
+  display: flex; align-items: center; gap: 14px;
+  padding: 6px 8px 6px 14px;
+  background: var(--accent-soft);
+  border-bottom: 1px solid var(--line);
+  font-size: 0.82rem;
+}
+.repl-title { display: inline-flex; align-items: center; gap: 7px; font-weight: 600; color: var(--accent); }
+.dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); }
+.repl:not(.loaded) .dot { animation: pulse 1s ease-in-out infinite; }
+@keyframes pulse { 50% { opacity: 0.25; } }
+.repl-hint { color: var(--muted); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.repl-body { position: relative; }
+.repl iframe { display: block; width: 100%; height: min(78vh, 700px); border: 0; background: #fff; }
+.repl-loading {
+  position: absolute; inset: 0; display: grid; place-items: center;
+  color: var(--muted); font-size: 0.9rem; background: var(--surface);
+}
+.repl.loaded .repl-loading { display: none; }
+
 /* exercises */
 .exercise-prompt {
   border-left: 3px solid var(--exercise);
