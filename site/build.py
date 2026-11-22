@@ -29,7 +29,7 @@ ROOT = Path(__file__).resolve().parent.parent
 SRC = ROOT / "LeanBasics"
 OUT = ROOT / "docs"
 PLAYGROUND = "https://live.lean-lang.org/#code="
-REPO_URL = ""  # e.g. "https://github.com/<user>/<repo>" — enables "source" links
+REPO_URL = "https://github.com/nipunbatra/lean-from-python"
 
 
 # ----------------------------------------------------------------------------
