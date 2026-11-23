@@ -12,6 +12,7 @@
   /* syntax */
   --k: #a33a2d;  --t: #1f6f8b;  --ty: #7a5a00;  --c: #8b857b;
   --s: #3d7a3a;  --n: #9a4fb0;  --o: #5a564f;  --cmd: #c44536;
+  --py: #2b5b84;
   --radius: 10px;
   --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
 }
@@ -27,6 +28,7 @@
     --accent-soft: #e0705f1c;
     --exercise: #6cc0b8;
     --exercise-soft: #6cc0b814;
+    --py: #7fb0dc;
     --k: #f08a77;  --t: #79c3dd;  --ty: #e3c26a;  --c: #8a8478;
     --s: #9ccf8a;  --n: #d29ae6;  --o: #b8b2a7;  --cmd: #f08a77;
   }
@@ -190,6 +192,21 @@ pre code { font-size: inherit; }
 }
 .repl.loaded .repl-loading { display: none; }
 
+/* Python | Lean side by side (phrasebook) */
+.pair {
+  position: relative;
+  width: min(1240px, calc(100vw - 32px));
+  left: 50%;
+  transform: translateX(-50%);
+  display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
+  gap: 14px; align-items: start;
+  margin: 14px 0 22px;
+}
+.pair > .cell { margin: 0; }
+.cell-label.lang-py { color: var(--py); font-weight: 600; }
+.pair .code-cell:not(.py-cell) .cell-label { color: var(--accent); font-weight: 600; }
+.py-cell .out-val { display: block; }
+
 /* exercises */
 .exercise-prompt {
   border-left: 3px solid var(--exercise);
@@ -255,6 +272,10 @@ th { font-weight: 600; border-bottom: 2px solid var(--line); }
 footer {
   text-align: center; color: var(--muted); font-size: 0.85rem;
   padding: 24px 16px 40px; border-top: 1px solid var(--line);
+}
+
+@media (max-width: 900px) {
+  .pair { width: auto; left: auto; transform: none; grid-template-columns: minmax(0, 1fr); }
 }
 
 @media (max-width: 640px) {

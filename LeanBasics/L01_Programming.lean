@@ -9,6 +9,9 @@ right below it, with the code from every earlier cell already loaded, much like 
 Jupyter kernel. Edit anything you like. Put your cursor on a line to see its output
 in the right-hand **Infoview** panel. (The ↗ button opens the same thing in a new tab.)
 
+Looking for "how do I write *this Python* in Lean?" Lesson 6 is a **Python → Lean
+phrasebook** with side-by-side examples. Keep it open while you work.
+
 ## Values, types, `#eval` and `#check`
 
 - `#eval e` runs `e` and prints the result, like typing at the Python REPL.

@@ -9,6 +9,7 @@ A short, hands-on Lean 4 course for people who already program, written as noteb
 | 3 | [Induction](LeanBasics/L03_Induction.lean) | 1 + 2 + ⋯ + n = n(n+1)/2 by hand and automatically; odd numbers, squares, cubes |
 | 4 | [Logic](LeanBasics/L04_Logic.lean) | ∧ ∨ ¬ ∀ ∃ with even and odd numbers |
 | 5 | [Proving programs](LeanBasics/L05_Programs.lean) | induction on lists; a fast sum is proved equal to the simple one |
+| 6 | [Python → Lean phrasebook](LeanBasics/L06_Phrasebook.lean) | everyday Python side by side with Lean: strings, lists, comprehensions, loops, None, exceptions, dicts, classes |
 
 ## Two ways to work
 

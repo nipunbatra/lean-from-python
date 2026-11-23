@@ -4,7 +4,10 @@
 The .lean files are the single source of truth:
   * `/-! ... -/` doc comments become markdown (text) cells,
   * the Lean code between them becomes code cells,
-  * a doc comment starting with `@exercise` / `@solution` marks the next code cell.
+  * a doc comment starting with `@exercise` / `@solution` marks the next code cell,
+  * a doc comment that ends in a ```python fence is shown side by side with the next
+    code cell; the Python is run at build time (one namespace per page) for its output,
+  * leading `import` lines are not shown as a cell but are loaded by every Run link.
 
 Every code cell gets an "Open in playground" link to https://live.lean-lang.org
 that contains all the ordinary code cells before it, so it runs like a Jupyter
@@ -301,8 +304,58 @@ def cell_program(prefix: str, text: str, label: str) -> str:
             f"-- ▼▼▼ {label} ▼▼▼\n\n{text.strip()}\n")
 
 
-def render_code_cell(c: Cell, prefix: str, n: int) -> str:
-    label = {"normal": f"[{n}]", "exercise": "exercise", "solution": "solution"}[c.role]
+PY_KEYWORDS = {"def", "return", "if", "elif", "else", "for", "while", "in", "not", "and", "or",
+               "lambda", "class", "import", "from", "try", "except", "raise", "as", "is",
+               "match", "case", "assert", "pass", "None", "True", "False"}
+PY_TOKEN = re.compile(r"""
+  (?P<comment>\#[^\n]*)
+| (?P<string>f?"(?:\\.|[^"\\])*"|f?'(?:\\.|[^'\\])*')
+| (?P<deco>@\w+)
+| (?P<number>\b\d+(?:\.\d+)?\b)
+| (?P<word>[A-Za-z_]\w*)
+""", re.VERBOSE)
+PY_TYPES = {"int", "str", "float", "list", "dict", "bool", "TypeVar"}
+
+
+def highlight_python(code: str) -> str:
+    out, pos = [], 0
+    for m in PY_TOKEN.finditer(code):
+        out.append(html.escape(code[pos:m.start()]))
+        text, kind = m.group(0), m.lastgroup
+        esc = html.escape(text)
+        cls = {"comment": "c", "string": "s", "deco": "cmd", "number": "n"}.get(kind)
+        if kind == "word":
+            cls = "k" if text in PY_KEYWORDS else "ty" if text in PY_TYPES else None
+        out.append(f'<span class="{cls}">{esc}</span>' if cls else esc)
+        pos = m.end()
+    out.append(html.escape(code[pos:]))
+    return "".join(out)
+
+
+def run_python(code: str, ns: dict) -> str:
+    """Run a Python snippet in the page's shared namespace (like a Jupyter kernel)."""
+    import contextlib, io
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf):
+        exec(compile(code, "<python cell>", "exec"), ns)
+    return buf.getvalue().rstrip("\n")
+
+
+def render_python_cell(code: str, output: str) -> str:
+    out = (f'<div class="outputs"><span class="out-label">output</span>'
+           f'<div class="out-val">{html.escape(output)}</div></div>') if output else ""
+    return (f'<div class="cell code-cell py-cell"><div class="cell-bar">'
+            f'<span class="cell-label lang-py">Python</span><span class="cell-actions">'
+            f'<button class="btn copy" type="button" data-code="{html.escape(code)}">{ICON_COPY}'
+            f'<span>Copy</span></button></span></div>'
+            f"<pre><code>{highlight_python(code)}</code></pre>{out}</div>")
+
+
+PY_FENCE = re.compile(r"```python\n(.*?)\n```\s*$", re.S)
+
+
+def render_code_cell(c: Cell, prefix: str, n: int, lang: str = "") -> str:
+    label = {"normal": f"{lang}[{n}]", "exercise": "exercise", "solution": "solution"}[c.role]
     title = {"normal": f"Cell [{n}]", "exercise": "Exercise", "solution": "Solution"}[c.role]
     full = cell_program(prefix, c.text, title)
     url = html.escape(playground_url(full))
@@ -333,18 +386,39 @@ def render_code_cell(c: Cell, prefix: str, n: int) -> str:
 def render_lesson(path: Path, cells: list[Cell], lessons, idx) -> str:
     title = next((c.text.split("\n")[0].lstrip("# ") for c in cells if c.kind == "md"), path.stem)
     parts, prefix_cells, n = [], [], 0
-    in_exercise = False
+    # A file that starts with `import` lines: not shown as a cell, but loaded by every Run link.
+    if cells and cells[0].kind == "code" and all(
+            l.startswith("import ") or not l.strip() for l in cells[0].text.split("\n")):
+        prefix_cells.append(cells[0].text)
+        cells = cells[1:]
+    import types
+    py_mod = types.ModuleType(f"lesson_{path.stem}")   # dataclasses need a real module
+    sys.modules[py_mod.__name__] = py_mod
+    py_ns = py_mod.__dict__
+    pending_py = None   # a markdown cell ending in a ```python fence pairs with the next code cell
     for c in cells:
         if c.kind == "md":
+            text = c.text
+            m = PY_FENCE.search(text)
+            if m and c.role == "normal":
+                pending_py = m.group(1)
+                text = text[:m.start()].strip()
+            if not text:
+                continue
             if c.role == "exercise":
-                parts.append(f'<div class="cell md-cell exercise-prompt">{markdown(c.text)}</div>')
+                parts.append(f'<div class="cell md-cell exercise-prompt">{markdown(text)}</div>')
             elif c.role != "solution":
-                parts.append(f'<div class="cell md-cell">{markdown(c.text)}</div>')
+                parts.append(f'<div class="cell md-cell">{markdown(text)}</div>')
             continue
         prefix = "\n\n".join(prefix_cells)
         if c.role == "normal":
             n += 1
-        parts.append(render_code_cell(c, prefix, n))
+        if pending_py is not None:
+            py = render_python_cell(pending_py, run_python(pending_py, py_ns))
+            parts.append(f'<div class="pair">{py}{render_code_cell(c, prefix, n, "Lean ")}</div>')
+            pending_py = None
+        else:
+            parts.append(render_code_cell(c, prefix, n))
         if c.role == "normal":
             prefix_cells.append(c.text)
     whole = "\n\n".join(prefix_cells) + "\n"
@@ -402,7 +476,7 @@ function closeRepl(repl) {{
 document.addEventListener('click', async (e) => {{
   const run = e.target.closest('button.run');
   if (run) {{
-    const cell = run.closest('.code-cell');
+    const cell = run.closest('.pair') || run.closest('.code-cell');
     const open = cell.nextElementSibling;
     if (open && open.classList.contains('repl')) {{ closeRepl(open); return; }}
     const repl = document.createElement('div');
@@ -479,6 +553,7 @@ SHORT = {
     "L03_Induction": "Induction",
     "L04_Logic": "Logic",
     "L05_Programs": "Proving programs",
+    "L06_Phrasebook": "Phrasebook",
 }
 
 BLURBS = {
@@ -487,6 +562,8 @@ BLURBS = {
     "L03_Induction": "Gauss's formula by hand, then automatically. Sums of odd numbers, squares and cubes. Inequalities.",
     "L04_Logic": "And, or, not, for all, there exists, using even and odd numbers.",
     "L05_Programs": "Induction on lists. Prove that a fast accumulator sum equals the simple one, for every input.",
+    "L06_Phrasebook": "Python and Lean side by side: strings, lists, comprehensions, loops, None, exceptions, "
+                      "dicts, classes, match. Look things up here any time.",
 }
 
 
